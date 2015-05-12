@@ -17,6 +17,9 @@ LOG = logging.getLogger("capture_motion")
 
 # ------ Settings ------
 
+# Save images to which file loction?
+imageFileLocation	= '/mnt/serv/'
+
 # Camera
 camera.resolution       = (1296, 972)
 camera.framerate        = 10
@@ -30,20 +33,14 @@ camera.saturation       = 0
 camera.ISO              = 0
 camera.exposure_mode    = 'auto'
 
-# How many images you want when motion is detected?
-imagesToShootAtMotion	= 1
-
 # Astral location for sunset and sunrise
 # Find your nearest city here: http://pythonhosted.org/astral/#cities
 astral_location         = "Amsterdam"
 
 # Motion detection
-motion_score			= 40		# Play with me
-imagesToShootAtMotion   	= 3 		# How many images you want when motion is detected?
+motion_score			= 50		# Play with me
+imagesToShootAtMotion   	= 2 		# How many images you want when motion is detected?
 minimum_still_interval          = 5
-motion_detected                 = False
-last_still_capture_time         = datetime.datetime.now()
-
 
 # ------ Main  -------
 
@@ -51,12 +48,16 @@ astral_sunrise          = None
 astral_sunset           = None
 astral_lastQueryTime 	= datetime.datetime.now() + datetime.timedelta(-30)
 
+motion_detected                 = False
+last_still_capture_time         = datetime.datetime.now()
+
+
 def CheckDayNightCycle():
 	global astral_lastQueryTime, astral_sunrise, astral_sunset, camera
 
 	# Sunrise and Sunset times updates every 24h
 	if (astral_lastQueryTime < (datetime.datetime.now()-datetime.timedelta(hours=24))):
-		print "Updating astral because of 24h difference: " + str(datetime.datetime.now() - astral_lastQueryTime)
+		LOG.info("Updating astral because of 24h difference: " + str(datetime.datetime.now() - astral_lastQueryTime))
 		astral_lastQueryTime = datetime.datetime.now()
 
 		astral_sun 	= Astral()[astral_location].sun(None, local=True)
@@ -108,8 +109,8 @@ with DetectMotion(camera) as output:
 
             # Shoot as many images as set in the config
             for x in range(0, (imagesToShootAtMotion +1)):
-                filename = '/mnt/serv/' + datetime.datetime.now().strftime('%Y-%m-%dT%H.%M.%S.%f') + '.jpg'
-            camera.capture(filename, 'jpeg')
+                filename = imageFileLocation + datetime.datetime.now().strftime('%Y-%m-%dT%H.%M.%S.%f') + '.jpg'
+            	camera.capture(filename, 'jpeg')
 
             #LOG.debug('image captured to file: %s' % filename)
 
