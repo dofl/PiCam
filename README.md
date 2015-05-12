@@ -1,10 +1,16 @@
 # Summary
-Better PiCam script with focus on image quality. Based on my previous PiCam script found at CodeProject:
-http://www.codeproject.com/Articles/762494/Raspberry-Pi-HD-Surveillance-Camera-with-Motion-Ni
+PiCam script with focus on image quality, easy setup and a lot of (automatic) functions.
 
 # What works
-- It shoots motion based images based on a very static config. Hurray!
+- Takes images based on motion detection
+- Automatically changes day/night settings based on your local sunset/sunrise
 
 # ToDo
-I've got a lot plannend. See the issues list for full details:
-https://github.com/dofl/PiCam/issues?q=is%3Aopen+is%3Aissue+label%3Aenhancement
+The script is still in the works, but a lot is coming:
+- Optimal dynamic motion detection level
+- Camera LED on/off during the night/day
+- Easy installer (although the script isn't hard to install..)
+- Website to manage the script / see the recently taken images.
+- Multithreading
+
+See the issues list for full details.
