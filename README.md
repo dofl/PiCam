@@ -1,5 +1,5 @@
-# PiCam
-Better PiCam python script with focus on image quality.
+# Summary
+Better PiCam script with focus on image quality.
 
 # What works
 - It shoots motion based images based on a very static config. Hurray!
