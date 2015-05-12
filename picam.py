@@ -59,7 +59,7 @@ def CheckDayNightCycle():
 	global astral_sunrise
 	global astral_sunset
 
-	# SCript is just starting up. Fillup astral_lastQueryTime
+	# Script is just starting up. Fillup astral_lastQueryTime
 	if (astral_lastQueryTime is None):
 		astral_lastQueryTime = datetime.datetime.now() + datetime.timedelta(-30)
 
@@ -95,7 +95,7 @@ class DetectMotion(picamera.array.PiMotionAnalysis):
       # if there're more than 10 vectors with a magnitude greater
       # than 80, then motion was detected:
       if (a > 80).sum() > 10:
-        LOG.info('motion detected at: %s' % datetime.datetime.now().strftime('%Y-%m-%dT%H.%M.%S.%f'))
+        #LOG.info('motion detected at: %s' % datetime.datetime.now().strftime('%Y-%m-%dT%H.%M.%S.%f'))
         motion_detected = True
 
 
@@ -113,14 +113,14 @@ with DetectMotion(camera) as output:
 
         camera.wait_recording(1)
 
-      LOG.info('stop recording and capture an image...')
+      #LOG.info('stop recording and capture an image...')
       camera.stop_recording()
       motion_detected = False
 
       filename = '/mnt/serv/' + datetime.datetime.now().strftime('%Y-%m-%dT%H.%M.%S.%f') + '.jpg'
-      #camera.capture(filename, 'jpeg')
+      camera.capture(filename, 'jpeg')
 
-      LOG.info('image captured to file: %s' % filename)
+      #LOG.info('image captured to file: %s' % filename)
 
       # restart video recording
       camera.start_recording('/dev/null', format='h264', motion_output=output)
