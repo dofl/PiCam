@@ -1,10 +1,10 @@
 # PiCam
 Better PiCam python script with focus on image quality.
 
-What works
+# What works
 - It shoots motion based images based on a very static config. Hurray!
 
-Todo
+# ToDo
 - Make the processing (write image to location) of the images multithreaded
   - Or use a RAM drive with an external script that copies the contents of the RAM drive to a external location
 - Use the sunset and sunrise to dynamically change the brightness of the image in day and night.
