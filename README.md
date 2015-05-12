@@ -17,21 +17,25 @@ See the issues list for full details.
 
 # How to install
 Make sure you have a Raspberry Pi with the camera addon and a fully updated Raspbian OS. Enable the camera addon in Raspbian:
-
-'sudo raspi-config'
+```
+sudo raspi-config
+```
 Select Enable camera and hit Enter, then go to Finish and you'll be prompted to reboot.
 
 Install Astral (used for the sunset/sunrise, https://pythonhosted.org/astral)
-
-'sudo pip install astral'
+```
+sudo pip install astral
+```
 
 Install Screen
-
-'sudo apt-get install screen'
+```
+sudo apt-get install screen
+```
 
 open the script with a text editor like Nano and edit the values you'd need.
 
 Run the script, preferrable in Screen:
-
-'sudo screen python picam.py'
+```
+sudo screen python picam.py
+```
 And ALT-D yourself out of the screen shell and see the images come in.
