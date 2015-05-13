@@ -32,13 +32,8 @@ camera.sharpness        = 0
 camera.contrast         = 0
 camera.saturation       = 0
 camera.ISO              = 0
-#camera.exposure_mode    = 'auto'
-#camera.shutter_speed	= 0
-
-camera.exposure_mode    = 'night'
-#motion_score            = motion_score - 20
-#camera.brightness       = camera.brightness + 10
-camera.shutter_speed    = 50000
+camera.exposure_mode    = 'auto'
+camera.shutter_speed	= 0
 
 # Astral location for sunset and sunrise
 # Find your nearest city here: http://pythonhosted.org/astral/#cities
