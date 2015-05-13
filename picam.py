@@ -17,12 +17,13 @@ LOG = logging.getLogger("capture_motion")
 
 # ------ Settings ------
 
-# Save images to which file loction?
-imageFileLocation	= '/mnt/serv/'
+# Save images to which file loction? No tailing /
+# Leave at /mnt/picam_ramdisk when using the storageController.sh
+imageFileLocation	= '/mnt/picam_ramdisk'
 
 # Camera
 camera.resolution       = (1296, 972)
-camera.framerate        = 10
+camera.framerate        = 30
 camera.hflip            = False
 camera.vflip            = False
 camera.rotation         = 270
@@ -31,15 +32,21 @@ camera.sharpness        = 0
 camera.contrast         = 0
 camera.saturation       = 0
 camera.ISO              = 0
-camera.exposure_mode    = 'auto'
+#camera.exposure_mode    = 'auto'
+#camera.shutter_speed	= 0
+
+camera.exposure_mode    = 'night'
+#motion_score            = motion_score - 20
+#camera.brightness       = camera.brightness + 10
+camera.shutter_speed    = 50000
 
 # Astral location for sunset and sunrise
 # Find your nearest city here: http://pythonhosted.org/astral/#cities
 astral_location         = "Amsterdam"
 
 # Motion detection
-motion_score			= 50		# Play with me
-imagesToShootAtMotion   	= 2 		# How many images you want when motion is detected?
+motion_score			= 60		# Play with me
+imagesToShootAtMotion   	= 1 		# How many images you want when motion is detected?
 minimum_still_interval          = 5
 
 # ------ Main  -------
@@ -67,16 +74,23 @@ def CheckDayNightCycle():
 		LOG.info("Astral updated to sunrise " + str(astral_sunrise) + " and sunset " + str(astral_sunset))
 
 	# Switch between day and night
+	
 	if (time.strftime("%H:%M:%S") == astral_sunrise.time()) and camera.exposure_mode != "auto":
+		camera.stop_recording()
 		camera.exposure_mode 	= 'auto'
 		motion_score 		= motion_score + 20
-		camera.brightness	= camera.brightness - 10 
+		#camera.brightness	= camera.brightness - 10 
+		camera.shutter_speed    = 0
 		LOG.info("Changing camera exposure to day (auto) and motion score to " + motion_score)
+		camera.start_recording('/dev/null', format='h264', motion_output=output)
 	if (time.strftime("%H:%M:%S") == astral_sunset.time()) and camera.exposure_mode != "night":
+		camera.stop_recording()
 		camera.exposure_mode 	= 'night'
 		motion_score 		= motion_score - 20
-		camera.brightness       = camera.brightness + 10
+		#camera.brightness       = camera.brightness + 10
+		camera.shutter_speed    = 50000
 		LOG.info("Changing camera exposure to night and motion score to: " + motion_score)
+		camera.start_recording('/dev/null', format='h264', motion_output=output)
 
 # The 'analyse' method gets called on every frame processed while picamera # is recording h264 video.
 class DetectMotion(picamera.array.PiMotionAnalysis):
@@ -92,6 +106,8 @@ class DetectMotion(picamera.array.PiMotionAnalysis):
       if (a > motion_score).sum() > 10:
         LOG.debug('motion detected at: %s' % datetime.datetime.now().strftime('%Y-%m-%dT%H.%M.%S.%f'))
         motion_detected = True
+
+print "PiCam started. All logging will go into picam.log"
 
 with DetectMotion(camera) as output:
     try:
@@ -109,7 +125,7 @@ with DetectMotion(camera) as output:
 
             # Shoot as many images as set in the config
             for x in range(0, (imagesToShootAtMotion +1)):
-                filename = imageFileLocation + datetime.datetime.now().strftime('%Y-%m-%dT%H.%M.%S.%f') + '.jpg'
+                filename = imageFileLocation + "/" +  datetime.datetime.now().strftime('%Y-%m-%dT%H.%M.%S.%f') + '.jpg'
             	camera.capture(filename, 'jpeg')
 
             #LOG.debug('image captured to file: %s' % filename)
