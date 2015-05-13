@@ -22,7 +22,7 @@ fi
 
 # mount the ramdisk
 if ! grep -qs $RAMDISK /proc/mounts; then
-	sudo mount -t tmpfs -o size=25m tmpfs $RAMDISK
+	sudo mount -t tmpfs -o size=40m tmpfs $RAMDISK
 fi
 
 echo "Startup done. Starting the constant copy"
@@ -42,12 +42,12 @@ do
 	fi
 
 	# move files to the network location if mounted, else to offline storage
-	# files will only be moved if their older then 5 seconds
+	# files will only be moved if their older then 10 seconds
         if grep -qs $NETWORK /proc/mounts; then
-                find $RAMDISK -type f -mmin +0.05 -exec mv "{}" $NETWORK \;
-                find $OFFLINE -type f -mmin +0.05 -exec mv "{}" $NETWORK \;
+                find $RAMDISK -type f -mmin +0.10 -exec mv "{}" $NETWORK \; -exec sleep 0.1 \; | xargs -n 1 -0 -I {}
+                find $OFFLINE -type f -mmin +0.10 -exec mv "{}" $NETWORK \; -exec sleep 0.1 \; | xargs -n 1 -0 -I {}
         else
-                find $RAMDISK -type f -mmin +0.05 -exec mv "{}" $OFFLINE \;
+                find $RAMDISK -type f -mmin +0.10 | xargs -n 1 -0 -I {} mv "{}" $OFFLINE; sleep 1
         fi
 
         sleep 3
