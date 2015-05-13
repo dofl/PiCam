@@ -20,10 +20,11 @@ LOG = logging.getLogger("capture_motion")
 # Save images to which file loction? No tailing /
 # Leave at /mnt/picam_ramdisk when using the storageController.sh
 imageFileLocation	= '/mnt/picam_ramdisk'
+#imageFileLocation      = '/mnt/serv'
 
 # Camera
 camera.resolution       = (1296, 972)
-camera.framerate        = 30
+camera.framerate        = 10
 camera.hflip            = False
 camera.vflip            = False
 camera.rotation         = 270
@@ -35,12 +36,14 @@ camera.ISO              = 0
 camera.exposure_mode    = 'auto'
 camera.shutter_speed	= 0
 
+imageQuality		= 15	# jpg image quality 0-100 (200KB-1.5MB per image)
+
 # Astral location for sunset and sunrise
 # Find your nearest city here: http://pythonhosted.org/astral/#cities
 astral_location         = "Amsterdam"
 
 # Motion detection
-motion_score			= 60		# Play with me
+motion_score			= 70		# Play with me
 imagesToShootAtMotion   	= 1 		# How many images you want when motion is detected?
 minimum_still_interval          = 5
 
@@ -71,21 +74,17 @@ def CheckDayNightCycle():
 	# Switch between day and night
 	
 	if (time.strftime("%H:%M:%S") == astral_sunrise.time()) and camera.exposure_mode != "auto":
-		camera.stop_recording()
 		camera.exposure_mode 	= 'auto'
 		motion_score 		= motion_score + 20
 		#camera.brightness	= camera.brightness - 10 
 		camera.shutter_speed    = 0
 		LOG.info("Changing camera exposure to day (auto) and motion score to " + motion_score)
-		camera.start_recording('/dev/null', format='h264', motion_output=output)
 	if (time.strftime("%H:%M:%S") == astral_sunset.time()) and camera.exposure_mode != "night":
-		camera.stop_recording()
 		camera.exposure_mode 	= 'night'
 		motion_score 		= motion_score - 20
 		#camera.brightness       = camera.brightness + 10
 		camera.shutter_speed    = 50000
 		LOG.info("Changing camera exposure to night and motion score to: " + motion_score)
-		camera.start_recording('/dev/null', format='h264', motion_output=output)
 
 # The 'analyse' method gets called on every frame processed while picamera # is recording h264 video.
 class DetectMotion(picamera.array.PiMotionAnalysis):
@@ -121,15 +120,15 @@ with DetectMotion(camera) as output:
             # Shoot as many images as set in the config
             for x in range(0, (imagesToShootAtMotion +1)):
                 filename = imageFileLocation + "/" +  datetime.datetime.now().strftime('%Y-%m-%dT%H.%M.%S.%f') + '.jpg'
-            	camera.capture(filename, 'jpeg')
+            	camera.capture(filename, 'jpeg', quality=imageQuality)
 
             #LOG.debug('image captured to file: %s' % filename)
 
             # restart video recording
             camera.start_recording('/dev/null', format='h264', motion_output=output)
-    except KeyboardInterrupt as e:
+    except Exception:
+	logging.info('Exception', exc_info=True)
         camera.close()
-        LOG.info("received KeyboardInterrupt via Ctrl-C")
         pass
     finally:
         LOG.info("camera turned off!")
