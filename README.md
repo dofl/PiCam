@@ -41,7 +41,7 @@ sudo apt-get install screen
 
 Open the picam.py and storageController.sh scripts with a text editor like Nano and edit the values you'd need.
 
-Run the scripts, preferrable in Screen. Start with the storageController.sh as this first needs to create the ramdisk
+Run the scripts, preferrably in Screen. Start with the storageController.sh script as this needs to create the RAMdisk first
 ```
 sudo screen sh storageController.sh
 sudo screen python picam.py
