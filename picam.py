@@ -24,7 +24,7 @@ imageFileLocation	= '/mnt/picam_ramdisk'
 
 # Camera
 camera.resolution       = (1296, 972)
-camera.framerate        = 10
+camera.framerate        = 20
 camera.hflip            = False
 camera.vflip            = False
 camera.rotation         = 270
@@ -32,59 +32,56 @@ camera.brightness       = 50
 camera.sharpness        = 0
 camera.contrast         = 0
 camera.saturation       = 0
-camera.ISO              = 0
+camera.ISO              = 150
 camera.exposure_mode    = 'auto'
 camera.shutter_speed	= 0
 
-imageQuality		= 15	# jpg image quality 0-100 (200KB-1.5MB per image)
+imageQuality		= 20	# jpg image quality 0-100 (200KB-1.5MB per image)
 
 # Astral location for sunset and sunrise
 # Find your nearest city here: http://pythonhosted.org/astral/#cities
 astral_location         = "Amsterdam"
 
 # Motion detection
-motion_score			= 70		# Play with me
+motion_score			= 20		# Play with me
 imagesToShootAtMotion   	= 1 		# How many images you want when motion is detected?
 minimum_still_interval          = 5
 
 # ------ Main  -------
 
-astral_sunrise          = None
-astral_sunset           = None
 astral_lastQueryTime 	= datetime.datetime.now() + datetime.timedelta(-30)
+astral_sun		= None
 
 motion_detected                 = False
 last_still_capture_time         = datetime.datetime.now()
 
-
 def CheckDayNightCycle():
-	global astral_lastQueryTime, astral_sunrise, astral_sunset, camera
+	global astral_lastQueryTime, astral_sun, camera, motion_score
 
 	# Sunrise and Sunset times updates every 24h
 	if (astral_lastQueryTime < (datetime.datetime.now()-datetime.timedelta(hours=24))):
 		LOG.info("Updating astral because of 24h difference: " + str(datetime.datetime.now() - astral_lastQueryTime))
 		astral_lastQueryTime = datetime.datetime.now()
 
-		astral_sun 	= Astral()[astral_location].sun(None, local=True)
-		astral_sunrise 	= astral_sun['sunrise']
-		astral_sunset 	= astral_sun['sunset']
-
-		LOG.info("Astral updated to sunrise " + str(astral_sunrise) + " and sunset " + str(astral_sunset))
+		astral_sun = Astral()[astral_location].sun(None, local=True)
+		LOG.info("Astral updated to sunrise " + \
+			astral_sun['sunrise'].time().strftime('%H:%M') + \
+			 " and sunset " +  astral_sun['sunset'].time().strftime('%H:%M'))
 
 	# Switch between day and night
-	
-	if (time.strftime("%H:%M:%S") == astral_sunrise.time()) and camera.exposure_mode != "auto":
+	if (time.strftime("%H:%M") == astral_sun['sunrise'].time().strftime('%H:%M')) and camera.exposure_mode != "auto":
 		camera.exposure_mode 	= 'auto'
-		motion_score 		= motion_score + 20
-		#camera.brightness	= camera.brightness - 10 
+		motion_score 		= motion_score + 10
 		camera.shutter_speed    = 0
-		LOG.info("Changing camera exposure to day (auto) and motion score to " + motion_score)
-	if (time.strftime("%H:%M:%S") == astral_sunset.time()) and camera.exposure_mode != "night":
+		camera.iso 		= 150
+		LOG.info("Changing camera setting to day (auto)")
+	if (time.strftime("%H:%M") == astral_sun['sunset'].time().strftime('%H:%M')) and camera.exposure_mode != "night":
 		camera.exposure_mode 	= 'night'
-		motion_score 		= motion_score - 20
-		#camera.brightness       = camera.brightness + 10
-		camera.shutter_speed    = 50000
-		LOG.info("Changing camera exposure to night and motion score to: " + motion_score)
+		motion_score 		= motion_score - 10
+		camera.shutter_speed    = 2000000
+		camera.iso 		= 600
+		print "night"
+		LOG.info("Changing camera setting to night")
 
 # The 'analyse' method gets called on every frame processed while picamera # is recording h264 video.
 class DetectMotion(picamera.array.PiMotionAnalysis):
