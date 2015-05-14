@@ -22,19 +22,17 @@ The script is still in the works, but a lot planned:
 See the issues list for full details.
 
 # How to install
-Make sure you have a Raspberry Pi with the camera addon and a fully updated Raspbian OS. Enable the camera addon in Raspbian:
+Clone this GIT respository on your Raspberry PI:
 ```
-sudo raspi-config
+git clone https://github.com/dofl/PiCam.git
 ```
-Select Enable camera and hit Enter, then go to Finish and you'll be prompted to reboot.
-Also make sure that you've set 128MB RAM for the GPU.
 
 Install Astral (used for the sunset/sunrise, https://pythonhosted.org/astral)
 ```
 sudo pip install astral
 ```
 
-Install Screen
+Install Screen (to let the scripts run while you log out)
 ```
 sudo apt-get install screen
 ```
@@ -46,4 +44,5 @@ Run the scripts, preferrably in Screen. Start with the storageController.sh scri
 sudo screen sh storageController.sh
 sudo screen python picam.py
 ```
-And ALT-D yourself out of the screen shell and see the images come in on your NAS
+And ALT-D yourself out of the screen shell and see the images come in on your NAS.
+If something went wrong or you don't see any images, check the picam.log file.
