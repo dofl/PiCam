@@ -43,7 +43,7 @@ imageQuality		= 20	# jpg image quality 0-100 (200KB-1.5MB per image)
 astral_location         = "Amsterdam"
 
 # Motion detection
-motion_score			= 20		# Play with me
+motion_score			= 80		# Play with me
 imagesToShootAtMotion   	= 1 		# How many images you want when motion is detected?
 minimum_still_interval          = 5
 
