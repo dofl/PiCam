@@ -1,13 +1,12 @@
-import io
+import os
 import picamera
 import picamera.array
 import time
-from PIL import ImageChops, ImageChops
 import datetime
+import time
 import logging
 import numpy as np
 from astral import Astral
-from sys import exit
 
 # Initiate basics
 camera = picamera.PiCamera()
@@ -24,7 +23,7 @@ imageFileLocation	= '/mnt/picam_ramdisk'
 
 # Camera
 camera.resolution       = (1296, 972)
-camera.framerate        = 20
+camera.framerate        = 10
 camera.hflip            = False
 camera.vflip            = False
 camera.rotation         = 270
@@ -36,16 +35,16 @@ camera.ISO              = 150
 camera.exposure_mode    = 'auto'
 camera.shutter_speed	= 0
 
-imageQuality		= 20	# jpg image quality 0-100 (200KB-1.5MB per image)
+imageQuality		= 15	# jpg image quality 0-100 (200KB-1.5MB per image)
 
 # Astral location for sunset and sunrise
 # Find your nearest city here: http://pythonhosted.org/astral/#cities
 astral_location         = "Amsterdam"
 
 # Motion detection
-motion_score			= 80		# Play with me
+motion_score			= 40		# Play with me
 imagesToShootAtMotion   	= 1 		# How many images you want when motion is detected?
-minimum_still_interval          = 5
+minimum_still_interval          = 5		# how many seconds between motion
 
 # ------ Main  -------
 
@@ -54,6 +53,20 @@ astral_sun		= None
 
 motion_detected                 = False
 last_still_capture_time         = datetime.datetime.now()
+
+# Get available disk space
+def freeSpaceAvailable():
+    st = os.statvfs(imageFileLocation + "/")
+    diskSpaceFree = st.f_bavail * st.f_frsize
+    diskSpaceRequired = 2 * 1024 * 1024
+    freeSpaceAvailable = None
+    
+    if diskSpaceFree < diskSpaceRequired:
+	freeSpaceAvailable = False
+    else:
+	freeSpaceAvailable = True
+
+    return freeSpaceAvailable
 
 def CheckDayNightCycle():
 	global astral_lastQueryTime, astral_sun, camera, motion_score
@@ -94,8 +107,9 @@ class DetectMotion(picamera.array.PiMotionAnalysis):
         np.square(a['y'].astype(np.float))
       ).clip(0, 255).astype(np.uint8)
       # if there're more than 10 vectors with a magnitude greater than motion_score, then motion was detected:
-      if (a > motion_score).sum() > 10:
-        LOG.debug('motion detected at: %s' % datetime.datetime.now().strftime('%Y-%m-%dT%H.%M.%S.%f'))
+      #print str((a > 60).sum()) + " | " + str((a > 80).sum())
+      if (a > 60).sum() > motion_score:
+        #LOG.debug('motion detected at: %s' % datetime.datetime.now().strftime('%Y-%m-%dT%H.%M.%S.%f'))
         motion_detected = True
 
 print "PiCam started. All logging will go into picam.log"
@@ -114,10 +128,15 @@ with DetectMotion(camera) as output:
             camera.stop_recording()
             motion_detected = False
 
-            # Shoot as many images as set in the config
-            for x in range(0, (imagesToShootAtMotion +1)):
-                filename = imageFileLocation + "/" +  datetime.datetime.now().strftime('%Y-%m-%dT%H.%M.%S.%f') + '.jpg'
-            	camera.capture(filename, 'jpeg', quality=imageQuality)
+	    # Check free space. 
+	    if freeSpaceAvailable() == True:	
+		# Shoot as many images as set in the config
+            	for x in range(0, (imagesToShootAtMotion +1)):
+                	filename = imageFileLocation + "/" +  datetime.datetime.now().strftime('%Y-%m-%dT%H.%M.%S.%f') + '.jpg'
+            		camera.capture(filename, 'jpeg', quality=imageQuality)
+	    else:
+		LOG.info("Free space below 2MB. Couldn't save image!")
+		time.sleep(5)
 
             #LOG.debug('image captured to file: %s' % filename)
 

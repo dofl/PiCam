@@ -37,10 +37,10 @@ do
 		sudo umount -l $NETWORK
 
 		# reboot wifi. Could be that this went down
-                sudo ifdown --force wlan0
-                sleep 10
-                sudo ifup --force wlan0
-                sleep 10
+                #sudo ifdown --force wlan0
+                #sleep 10
+                #sudo ifup --force wlan0
+                #sleep 10
 	else
 		# server is up. mount if neccesary
 		if ! grep -qs $NETWORK /proc/mounts; then
@@ -65,6 +65,6 @@ do
                 done
         fi
 
-        sleep 5
+        sleep 3
 done
 
