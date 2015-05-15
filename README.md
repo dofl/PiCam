@@ -5,6 +5,7 @@ Raspberry Pi (A/B/2) Python Camera script with it's focus on image quality, auto
 Picam.py
 - Takes images based on motion detection
 - Automatically changes day/night settings based on your local sunset/sunrise
+- Camera LED on/off during the night/day (neighbour friendly)
 
 In combination with the storageController.sh script:
 - The picam.py script writes the images to a 32 MB RAMdisk for optimal speed
@@ -16,7 +17,6 @@ You don't need both scripts, Picam.py can easily run on it's own and write the i
 # ToDo
 The script is still in the works, but a lot planned:
 - Optimal dynamic motion detection level
-- Camera LED on/off during the night/day
 - Easy installer (although the scripts isn't hard to install..)
 - Website to manage the script / see the recently taken images.
 See the issues list for full details.
