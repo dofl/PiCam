@@ -43,8 +43,8 @@ ledTurnOnTime		= "23.00"	# use 24H scheme
 ledTurnOffTime		= "06:00"	# use 24H scheme
 
 # Motion detection
-motion_score		= 50		# Play with me
-imagesToShootAtMotion   = 1 		# How many images you want when motion is detected?
+motion_score		= 60		# Play with me
+imagesToShootAtMotion   = 3		# How many images you want when motion is detected?
 
 
 # ----------------------- Main ---------------------------------------------------------------
@@ -142,7 +142,7 @@ with DetectMotion(camera) as output:
 
 	    if freeSpaceAvailable():	
 		# Shoot as many images as set in the config
-            	for x in range(0, (imagesToShootAtMotion +1)):
+            	for x in range(0, (imagesToShootAtMotion)):
                 	filename = imageFileLocation + "/" +  datetime.datetime.now().strftime('%Y-%m-%dT%H.%M.%S.%f') + '.jpg'
             		camera.capture(filename, 'jpeg', quality=imageQuality)
 			#LOG.debug('image captured to file: %s' % filename)
@@ -158,5 +158,5 @@ with DetectMotion(camera) as output:
         camera.close()
         pass
     finally:
-        LOG.info("camera turned off!")
-        LOG.info("detect motion has ended.\n")
+	GPIO.cleanup()
+        LOG.info("Camera script shutdown")
