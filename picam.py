@@ -6,20 +6,17 @@ import datetime
 import time
 import logging
 import numpy as np
+import RPi.GPIO as GPIO
 from astral import Astral
 
 # Initiate basics
 camera = picamera.PiCamera()
 
-logging.basicConfig(filename='picam.log', level=logging.INFO, format='%(asctime)s %(message)s')
-LOG = logging.getLogger("capture_motion")
+# ----------------------- Settings ------------------------------------------------------------
 
-# ------ Settings ------
-
-# Save images to which file loction? No tailing /
+# Image file save loction? No tailing /
 # Leave at /mnt/picam_ramdisk when using the storageController.sh
 imageFileLocation	= '/mnt/picam_ramdisk'
-#imageFileLocation      = '/mnt/serv'
 
 # Camera
 camera.resolution       = (1296, 972)
@@ -35,21 +32,32 @@ camera.ISO              = 150
 camera.exposure_mode    = 'auto'
 camera.shutter_speed	= 0
 
-imageQuality		= 15	# jpg image quality 0-100 (200KB-1.5MB per image)
+imageQuality		= 15		# jpg image quality 0-100 (200KB-1.5MB per image)
 
-# Astral location for sunset and sunrise
-# Find your nearest city here: http://pythonhosted.org/astral/#cities
+# Astral location for sunset and sunrise/ Find your nearest city here: http://pythonhosted.org/astral/#cities
 astral_location         = "Amsterdam"
 
+# LED settings
+CamLed 			= 5      	# Use 5 for Model A/B and 32 for Model B+
+ledTurnOnTime		= "23.00"	# use 24H scheme
+ledTurnOffTime		= "06:00"	# use 24H scheme
+
 # Motion detection
-motion_score			= 40		# Play with me
-imagesToShootAtMotion   	= 1 		# How many images you want when motion is detected?
-minimum_still_interval          = 5		# how many seconds between motion
+motion_score		= 50		# Play with me
+imagesToShootAtMotion   = 1 		# How many images you want when motion is detected?
 
-# ------ Main  -------
 
-astral_lastQueryTime 	= datetime.datetime.now() + datetime.timedelta(-30)
-astral_sun		= None
+# ----------------------- Main ---------------------------------------------------------------
+
+logging.basicConfig(filename='picam.log', level=logging.INFO, format='%(asctime)s %(message)s')
+LOG = logging.getLogger("capture_motion")
+
+# Camera LED
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(CamLed, GPIO.OUT, initial=False)
+
+astral_lastQueryTime 		= datetime.datetime.now() + datetime.timedelta(-1)
+astral_sun			= None
 
 motion_detected                 = False
 last_still_capture_time         = datetime.datetime.now()
@@ -59,17 +67,15 @@ def freeSpaceAvailable():
     st = os.statvfs(imageFileLocation + "/")
     diskSpaceFree = st.f_bavail * st.f_frsize
     diskSpaceRequired = 2 * 1024 * 1024
-    freeSpaceAvailable = None
+    freeSpaceAvailable = True
     
     if diskSpaceFree < diskSpaceRequired:
 	freeSpaceAvailable = False
-    else:
-	freeSpaceAvailable = True
 
     return freeSpaceAvailable
 
 def CheckDayNightCycle():
-	global astral_lastQueryTime, astral_sun, camera, motion_score
+	global astral_lastQueryTime, astral_sun, camera, motion_score, ledTurnOnTime, ledTurnOffTime
 
 	# Sunrise and Sunset times updates every 24h
 	if (astral_lastQueryTime < (datetime.datetime.now()-datetime.timedelta(hours=24))):
@@ -81,27 +87,35 @@ def CheckDayNightCycle():
 			astral_sun['sunrise'].time().strftime('%H:%M') + \
 			 " and sunset " +  astral_sun['sunset'].time().strftime('%H:%M'))
 
-	# Switch between day and night
+        # Turn LED on and off
+	# Can be integrated with the astral if's below, but I find it too early (=scares neighbours)
+        if (time.strftime("%H:%M") == ledTurnOnTime) and camera.exposure_mode != "night":
+                GPIO.output(CamLed, True)
+		LOG.info("LED turned on")
+        if (time.strftime("%H:%M") == ledTurnOffTime) and camera.exposure_mode != "auto":
+                GPIO.output(CamLed, False)
+		LOG.info("LED turned off")
+
+	# Switch between day and night by Astral sunrise and sunset
 	if (time.strftime("%H:%M") == astral_sun['sunrise'].time().strftime('%H:%M')) and camera.exposure_mode != "auto":
 		camera.exposure_mode 	= 'auto'
-		motion_score 		= motion_score + 10
+		motion_score 		= motion_score + 15
 		camera.shutter_speed    = 0
 		camera.iso 		= 150
-		LOG.info("Changing camera setting to day (auto)")
+		LOG.info("Changing camera setting to day")
 	if (time.strftime("%H:%M") == astral_sun['sunset'].time().strftime('%H:%M')) and camera.exposure_mode != "night":
 		camera.exposure_mode 	= 'night'
-		motion_score 		= motion_score - 10
+		motion_score 		= motion_score - 15
 		camera.shutter_speed    = 2000000
 		camera.iso 		= 600
-		print "night"
 		LOG.info("Changing camera setting to night")
 
 # The 'analyse' method gets called on every frame processed while picamera # is recording h264 video.
 class DetectMotion(picamera.array.PiMotionAnalysis):
   def analyse(self, a):
-    global minimum_still_interval, motion_detected, last_still_capture_time, motion_score
+    global motion_detected, last_still_capture_time, motion_score
     if datetime.datetime.now() > last_still_capture_time + \
-        datetime.timedelta(seconds=minimum_still_interval):
+        datetime.timedelta(seconds=5):
       a = np.sqrt(
         np.square(a['x'].astype(np.float)) +
         np.square(a['y'].astype(np.float))
@@ -120,27 +134,24 @@ with DetectMotion(camera) as output:
 	camera.start_recording('/dev/null', format='h264', motion_output=output)
         while True:
             while not motion_detected:
-                # Check if the cam needs to switch to day/night
                 CheckDayNightCycle()
                 camera.wait_recording(1)
 
-            #LOG.info('stop recording and capture an image...')
+	    # Motion detected
             camera.stop_recording()
-            motion_detected = False
 
-	    # Check free space. 
-	    if freeSpaceAvailable() == True:	
+	    if freeSpaceAvailable():	
 		# Shoot as many images as set in the config
             	for x in range(0, (imagesToShootAtMotion +1)):
                 	filename = imageFileLocation + "/" +  datetime.datetime.now().strftime('%Y-%m-%dT%H.%M.%S.%f') + '.jpg'
             		camera.capture(filename, 'jpeg', quality=imageQuality)
+			#LOG.debug('image captured to file: %s' % filename)
 	    else:
 		LOG.info("Free space below 2MB. Couldn't save image!")
 		time.sleep(5)
 
-            #LOG.debug('image captured to file: %s' % filename)
-
             # restart video recording
+	    motion_detected = False
             camera.start_recording('/dev/null', format='h264', motion_output=output)
     except Exception:
 	logging.info('Exception', exc_info=True)
