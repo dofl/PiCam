@@ -22,46 +22,51 @@ fi
 
 # mount the ramdisk
 if ! grep -qs $RAMDISK /proc/mounts; then
-	sudo mount -t tmpfs -o size=32m tmpfs $RAMDISK
+	sudo mount -t tmpfs -o size=20m tmpfs $RAMDISK
 fi
 
-echo "Startup done. Starting the constant copy"
+echo "$(date) - Startup done. Starting the constant copy"
 
 while :
 do
+	DATE=$(date +"%m-%d-%Y %T")
+
 	# check the server who stores the images
 	ping -c 1 $SERVER_IP > /dev/null
 	if ! [ $? -eq 0 ]; then
-		echo "server IP down. umounting and restarting wifi" 
+		echo "$DATE - server IP down. Umounting network folder"
 		# server offline. unmount share so images go to the offline location
 		sudo umount -l $NETWORK
-
-		# reboot wifi. Could be that this went down
-                #sudo ifdown --force wlan0
-                #sleep 10
-                #sudo ifup --force wlan0
-                #sleep 10
 	else
 		# server is up. mount if neccesary
 		if ! grep -qs $NETWORK /proc/mounts; then
 			sudo mount -t cifs -o username=$SERVER_USERNAME,password=$SERVER_PASSWORD //$SERVER_IP/$SERVER_FOLDER $NETWORK
-			echo "server IP up, mounted the network share"
+			echo "$DATE - server IP up, mounted the network share"
 		fi
 	fi
 
 	# move files to the network location if mounted, else to offline storage
-	# files will only be moved if their older then 10 seconds
-        if grep -qs $NETWORK /proc/mounts; then
+	# files will only be moved if their older then 5 seconds
+        if grep -qs "$NETWORK" /proc/mounts; then
 		for image in $(find $RAMDISK -type f -mmin +0.05); do
-			mv $image $NETWORK
+			if ! fuser $image
+			then
+				mv $image $NETWORK
+			fi
 		done
 
 		for image in $(find $OFFLINE -type f -mmin +0.05); do
-                        mv $image $NETWORK
+                        if ! fuser $image
+			then
+                                mv $image $NETWORK
+			fi
                 done
         else
 		for image in $(find $RAMDISK -type f -mmin +0.05); do
-                        mv $image $OFFLINE
+                        if ! fuser $image
+			then
+                                mv $image $OFFLINE
+			fi
                 done
         fi
 
