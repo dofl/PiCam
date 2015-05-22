@@ -58,7 +58,7 @@ do
 
 
 	# move files to the network location if mounted, else to offline storage
-        if sudo grep -qs "$NETWORK" /proc/mounts; then
+        if grep -qs "$NETWORK" /proc/mounts; then
 		for image in $(find $RAMDISK -type f -mmin +0.05); do
 			if ! fuser $image
 			then

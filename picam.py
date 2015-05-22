@@ -174,7 +174,7 @@ def TakeNightImage():
     camera.framerate = Fraction(1, 6)
     camera.shutter_speed = 25000000   # 2.5 seconds
     camera.exposure_mode = 'off'
-    camera.iso = 700
+    camera.iso = 600
 
     time.sleep(2)   # Give the camera a good long time to measure AWB
 
@@ -190,29 +190,29 @@ def TakeNightImage():
 
 print "PiCam started. All logging will go into picam.log"
 
-while True:
-    with DetectMotion(camera) as output:
-        try:
-            camera.start_recording('/dev/null', format='h264', motion_output=output)
+with DetectMotion(camera) as output:
+    try:
+        camera.start_recording('/dev/null', format='h264', motion_output=output)
+        
+        while True:
             while not motionDetected:
                 UpdateAstral()
                 UpdateLED()
                 camera.wait_recording(1)
 
-	    motionDetected = False
-
+            motionDetected = False
+    
             if astralIsDay:
-		TakeDayImage()
+                TakeDayImage()
             else:
-		camera.stop_recording()
+                camera.stop_recording()
                 TakeNightImage()
                 camera.start_recording('/dev/null', format='h264', motion_output=output)
 
-        except Exception:
-            logging.info('Exception', exc_info=True)
-        finally:
-            logging.info("Motion detection ended")
-            camera.stop_recording()
+    except Exception:
+        logging.info('Exception', exc_info=True)
+    finally:
+        logging.info("Motion detection ended")
+        camera.stop_recording()
 
 logging.info("PiCam Script ended")
-
