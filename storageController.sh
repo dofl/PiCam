@@ -9,7 +9,7 @@ SERVER_USERNAME="MoCam"
 SERVER_PASSWORD="NC700xCam"
 SERVER_FOLDER="MoCam"		# the shared folder on the server
 
-PICAM_PROCESS_NAME="picam.py"
+PICAM_SCRIPT_NAME="picam.py"
 PICAM_SCRIPT_LOCATION="/home/pi"
 
 # create the ramdisk and offline location if not found
@@ -48,12 +48,12 @@ do
 		fi
 	fi
 
-	# check if the picam script is still alive
-	sudo ps ax | grep -v grep | grep "$PICAM_PROCESS_NAME" > /dev/null
+	# check if the picam script/process is still alive
+	sudo ps ax | grep -v grep | grep "$PICAM_SCRIPT_NAME" > /dev/null
 	if ! [ $? -eq 0 ]; then
 	  	echo "$DATE - PiCam down. Restarting script in 5 seconds"
 		sleep 5
-		sudo screen -d -m python $PICAM_SCRIPT_LOCATION/$PICAM_PROCESS_NAME
+		sudo screen -d -m python $PICAM_SCRIPT_LOCATION/$PICAM_SCRIPT_NAME
 	fi
 
 
