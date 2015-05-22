@@ -9,6 +9,9 @@ SERVER_USERNAME="MoCam"
 SERVER_PASSWORD="NC700xCam"
 SERVER_FOLDER="MoCam"		# the shared folder on the server
 
+PICAM_PROCESS_NAME="picam.py"
+PICAM_SCRIPT_LOCATION="/home/pi"
+
 # create the ramdisk and offline location if not found
 if [ ! -d $RAMDISK ]; then
 	echo "Creating  RAMDISK folder"
@@ -31,7 +34,7 @@ while :
 do
 	DATE=$(date +"%m-%d-%Y %T")
 
-	# check the server who stores the images
+	# check the network location where the images are send to
 	ping -c 1 $SERVER_IP > /dev/null
 	if ! [ $? -eq 0 ]; then
 		echo "$DATE - server IP down. Umounting network folder"
@@ -45,9 +48,17 @@ do
 		fi
 	fi
 
+	# check if the picam script is still alive
+	sudo ps ax | grep -v grep | grep "$PICAM_PROCESS_NAME" > /dev/null
+	if ! [ $? -eq 0 ]; then
+	  	echo "$DATE - PiCam down. Restarting script in 5 seconds"
+		sleep 5
+		sudo screen -d -m python $PICAM_SCRIPT_LOCATION/$PICAM_PROCESS_NAME
+	fi
+
+
 	# move files to the network location if mounted, else to offline storage
-	# files will only be moved if their older then 5 seconds
-        if grep -qs "$NETWORK" /proc/mounts; then
+        if sudo grep -qs "$NETWORK" /proc/mounts; then
 		for image in $(find $RAMDISK -type f -mmin +0.05); do
 			if ! fuser $image
 			then
