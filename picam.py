@@ -25,18 +25,19 @@ camera.hflip = False
 camera.vflip = False
 camera.rotation = 270
 
-imageQuality = 20  # jpg image quality 0-100 (200KB-1.5MB per image)
+imageQuality = 15  # jpg image quality 0-100 (200KB-1.5MB per image)
 
 # Astral location for sunset and sunrise/ Find your nearest city here: http://pythonhosted.org/astral/#cities
 astral_location = "Amsterdam"
+astralIsDay = True	# Start in Day mode
 
 # LED settings
 CamLed = 5  # Use 5 for Model A/B and 32 for Model B+
-ledTurnOnTime = "23.00"  # use 24H scheme
+ledTurnOnTime = "23:00"  # use 24H scheme
 ledTurnOffTime = "06:00"  # use 24H scheme
 
 # Motion detection
-motionScoreDay = 100
+motionScoreDay = 90
 motionScoreNight = 50
 
 imagesToShootAtMotion = 1  # How many images you want when motion is detected?
@@ -48,16 +49,15 @@ imagesToShootAtMotion = 1  # How many images you want when motion is detected?
 # Astral
 astralLastUpdateTime = datetime.datetime.now() + datetime.timedelta(-1)
 astralSunPosition = None    # dictionary with sunrise and sunset
-astralIsDay = False
 
 # logging
-logging.basicConfig(filename='picam.log', level=logging.INFO, format='%(asctime)s %(message)s')
+logging.basicConfig(filename='picam.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
 LOG = logging.getLogger("capture_motion")
 
 # Initiate camera
 motionDetected = False
 MotionLastStillCaptureTime = datetime.datetime.now()
-camera.framerate = 10
+camera.framerate = 30
 
 # initialise camera LED
 GPIO.setmode(GPIO.BCM)
@@ -67,13 +67,17 @@ isCameraLedon = False
 #-----------------------------------------------------------------------------------------------
 # Get available disk space
 def freeSpaceAvailable():
-    st = os.statvfs(imageFileLocation + "/")
-    diskSpaceFree = st.f_bavail * st.f_frsize
-    diskSpaceRequired = 2 * 1024 * 1024
     freeSpaceAvailable = True
 
-    if diskSpaceFree < diskSpaceRequired:
-        freeSpaceAvailable = False
+    try:
+        st = os.statvfs(imageFileLocation + "/")
+        diskSpaceFree = st.f_bavail * st.f_frsize
+        diskSpaceRequired = 2 * 1024 * 1024 #2 MB
+
+        if diskSpaceFree < diskSpaceRequired:
+            freeSpaceAvailable = False
+    except Exception:
+        LOG.info('Exception', exc_info=True)
 
     return freeSpaceAvailable
 
@@ -87,8 +91,8 @@ def UpdateAstral():
 
         astralSunPosition = Astral()[astral_location].sun(None, local=True)
         LOG.info("Astral updated to sunrise " + \
-                 astralSunPosition['sunrise'].time().strftime('%H:%M') + \
-                 " and sunset " + astralSunPosition['sunset'].time().strftime('%H:%M'))
+                    astralSunPosition['sunrise'].time().strftime('%H:%M') + \
+                    " and sunset " + astralSunPosition['sunset'].time().strftime('%H:%M'))
 
     # Switch between day and night by Astral sunrise and sunset
     if (time.strftime("%H:%M") == astralSunPosition['sunrise'].time().strftime('%H:%M')) and astralIsDay is False:
@@ -98,11 +102,9 @@ def UpdateAstral():
         astralIsDay = False
         LOG.info("Astral: Darkness cometh")
 
-
 #-----------------------------------------------------------------------------------------------
 def UpdateLED():
-    global ledTurnOnTime, ledTurnOffTime, isCameraLedon
-    # Turn LED on and off
+    global isCameraLedon
     if (time.strftime("%H:%M") == ledTurnOnTime) and isCameraLedon is False:
         GPIO.output(CamLed, True)
         LOG.info("LED: Turned on")
@@ -117,10 +119,12 @@ class DetectMotion(picamera.array.PiMotionAnalysis):
     def analyse(self, a):
         global motionDetected, MotionLastStillCaptureTime, motionScoreDay, motionScoreNight, astralIsDay
 
-	if astralIsDay:
-		motionScore = motionScoreDay
-	else:
-		motionScore = motionScoreNight
+        if astralIsDay:
+            motionScore = motionScoreDay
+        else:
+            motionScore = motionScoreNight
+
+        #print "MotionScore: " + str(motionScore)
 
         if datetime.datetime.now() > MotionLastStillCaptureTime + \
                 datetime.timedelta(seconds=5):
@@ -128,12 +132,12 @@ class DetectMotion(picamera.array.PiMotionAnalysis):
                 np.square(a['x'].astype(np.float)) +
                 np.square(a['y'].astype(np.float))
             ).clip(0, 255).astype(np.uint8)
-            #print str((a > 60).sum())
+            print str((a > 60).sum())
             if (a > 60).sum() > motionScore:
-                #LOG.debug('motion detected (%s) at: %s' % datetime.datetime.now().strftime('%Y-%m-%dT%H.%M.%S.%f'), motionScore)
+                #print 'motion detected ('+ str((a > 60).sum()) +') at: '+ datetime.datetime.now().strftime('%Y-%m-%dT%H.%M.%S.%f')
                 motionDetected = True
 
-#-----------------------------------------------------------------------------------------------
+    #-----------------------------------------------------------------------------------------------
 def FilenameGenerator():
 
     filename = None
@@ -142,11 +146,11 @@ def FilenameGenerator():
         filename = imageFileLocation + "/" + datetime.datetime.now().strftime('%Y-%m-%d_%H.%M.%S')
     else:
         if imageFileLocation == "None":
-            logging.info('No space left on disk. Will not save image')
+            LOG.info('No space left on disk. Will not save image')
         else:
             filename = imageFileLocationOffline + datetime.datetime.now().strftime('%Y-%m-%d_%H.%M.%S')
 
-    logging.debug('Filename generated: %s', filename)
+    LOG.debug('Filename generated: %s', filename)
 
     return filename
 
@@ -154,18 +158,19 @@ def FilenameGenerator():
 def TakeDayImage():
     # http://picamera.readthedocs.org/en/release-1.10/recipes2.html#capturing-images-whilst-recording
 
-    time.sleep(0.5)   # sleep for a little while so camera can get adjustments
-
+    camera.framerate = 10
     camera.exposure_mode = 'auto'
     camera.awb_mode = 'auto'
 
+    time.sleep(0.5)  # sleep for a little while so camera can get adjustments
+
     if imagesToShootAtMotion > 1:
-       	camera.capture_sequence([FilenameGenerator() + '_%02d.jpg' % i for i in range(imagesToShootAtMotion)], format='jpeg', quality=imageQuality, use_video_port=True)
+        camera.capture_sequence([FilenameGenerator() + '_%02d.jpg' % i for i in range(imagesToShootAtMotion)],
+                                format='jpeg', quality=imageQuality, use_video_port=False)
     else:
-        camera.capture(FilenameGenerator() + ".jpg", 'jpeg', quality=imageQuality, use_video_port=True)
+        camera.capture(FilenameGenerator() + ".jpg", 'jpeg', quality=imageQuality, use_video_port=False)
 
     return
-
 #-----------------------------------------------------------------------------------------------
 def TakeNightImage():
 
@@ -179,7 +184,8 @@ def TakeNightImage():
     time.sleep(2)   # Give the camera a good long time to measure AWB
 
     if imagesToShootAtMotion > 1:
-        camera.capture_sequence([FilenameGenerator() + '_%02d.jpg' % i for i in range(imagesToShootAtMotion)], format='jpeg', quality=imageQuality, use_video_port=False)
+        camera.capture_sequence([FilenameGenerator() + '_%02d.jpg' % i for i in range(imagesToShootAtMotion)], 
+				format='jpeg', quality=imageQuality, use_video_port=False)
     else:
         camera.capture(FilenameGenerator() + ".jpg", 'jpeg', quality=imageQuality, use_video_port=False)
 
@@ -201,18 +207,20 @@ with DetectMotion(camera) as output:
                 camera.wait_recording(1)
 
             motionDetected = False
+	    camera.stop_recording()
     
             if astralIsDay:
                 TakeDayImage()
             else:
-                camera.stop_recording()
                 TakeNightImage()
-                camera.start_recording('/dev/null', format='h264', motion_output=output)
 
+	    camera.start_recording('/dev/null', format='h264', motion_output=output)
     except Exception:
-        logging.info('Exception', exc_info=True)
+        LOG.info('Exception', exc_info=True)
     finally:
-        logging.info("Motion detection ended")
-        camera.stop_recording()
+        LOG.info("Motion detection ended")
+	camera.stop_recording()
+        GPIO.cleanup()
 
 logging.info("PiCam Script ended")
+
