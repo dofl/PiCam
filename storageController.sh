@@ -54,6 +54,7 @@ do
 	  	echo "$DATE - PiCam down. Restarting script in 5 seconds"
 		sleep 5
 		sudo screen -d -m python $PICAM_SCRIPT_LOCATION/$PICAM_SCRIPT_NAME
+		#sudo python $PICAM_SCRIPT_LOCATION/$PICAM_SCRIPT_NAME 2>&1 &
 	fi
 
 
