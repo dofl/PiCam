@@ -12,14 +12,16 @@ SERVER_FOLDER="MoCam"		# the shared folder on the server
 PICAM_SCRIPT_NAME="picam.py"
 PICAM_SCRIPT_LOCATION="/home/pi"
 
+LOGFILE="/home/pi/picam.log"
+
 # create the ramdisk and offline location if not found
 if [ ! -d $RAMDISK ]; then
-	echo "Creating  RAMDISK folder"
+	echo "Creating  RAMDISK folder" >> $LOGFILE
 	sudo mkdir $RAMDISK
 fi
 
 if [ ! -d $OFFLINE ]; then
-	echo "Creating OFFLINE folder"
+	echo "Creating OFFLINE folder" >> $LOGFILE
         sudo mkdir $OFFLINE
 fi
 
@@ -28,35 +30,49 @@ if ! grep -qs $RAMDISK /proc/mounts; then
 	sudo mount -t tmpfs -o size=20m tmpfs $RAMDISK
 fi
 
-echo "$(date) - Startup done. Starting the constant copy"
+echo "$(date) - Storagecontroller startup done." >> $LOGFILE
+echo "$(date) - Storagecontroller startup done. If you SCREEN'd here, ALT-D your way out."
+
+SERVER_OFFLINE_TRIES=0
 
 while :
 do
-	DATE=$(date +"%m-%d-%Y %T")
+	DATE=$(date +"%Y-%m-%d %H.%M.%S")
 
 	# check the network location where the images are send to
 	ping -c 1 $SERVER_IP > /dev/null
 	if ! [ $? -eq 0 ]; then
-		echo "$DATE - server IP down. Umounting network folder"
+		echo "$DATE - server IP down. Umounting network folder" >> $LOGFILE
 		# server offline. unmount share so images go to the offline location
 		sudo umount -l $NETWORK
+
+		 echo "$DATE - Server offline try $SERVER_OFFLINE_TRIES of 10" >> $LOGFILE
+
+		# reboot the Pi if the network failed 20 times. Network probably crashed
+		SERVER_OFFLINE_TRIES=$((SERVER_OFFLINE_TRIES+1))
+ 		if [[ "$SERVER_OFFLINE_TRIES" -gt 10 ]]; then
+			echo "$DATE - Restarting Pi. Network failed 10 times" >> $LOGFILE
+			sudo reboot
+		fi
+
 	else
 		# server is up. mount if neccesary
 		if ! grep -qs $NETWORK /proc/mounts; then
 			sudo mount -t cifs -o username=$SERVER_USERNAME,password=$SERVER_PASSWORD //$SERVER_IP/$SERVER_FOLDER $NETWORK
-			echo "$DATE - server IP up, mounted the network share"
+			echo "$DATE - server IP up, mounted the network share" >> $LOGFILE
 		fi
+
+		# reset the network fail counter
+		SERVER_OFFLINE_TRIES=0
 	fi
 
 	# check if the picam script/process is still alive
 	sudo ps ax | grep -v grep | grep "$PICAM_SCRIPT_NAME" > /dev/null
 	if ! [ $? -eq 0 ]; then
-	  	echo "$DATE - PiCam down. Restarting script in 5 seconds"
-		sleep 5
+	  	echo "$DATE - PiCam down. Restarting script in 5 seconds" >> $LOGFILE
 		sudo screen -d -m python $PICAM_SCRIPT_LOCATION/$PICAM_SCRIPT_NAME
-		#sudo python $PICAM_SCRIPT_LOCATION/$PICAM_SCRIPT_NAME 2>&1 &
+		sleep 10
 	fi
-
 
 	# move files to the network location if mounted, else to offline storage
         if grep -qs "$NETWORK" /proc/mounts; then
@@ -71,6 +87,7 @@ do
                         if ! fuser $image
 			then
                                 mv $image $NETWORK
+				sleep 1
 			fi
                 done
         else

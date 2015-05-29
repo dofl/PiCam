@@ -130,7 +130,7 @@ class DetectMotion(picamera.array.PiMotionAnalysis):
             motionScore = motionScoreNight
 
         if datetime.datetime.now() > MotionLastStillCaptureTime + \
-                datetime.timedelta(seconds=5):
+                datetime.timedelta(seconds=1):
             a = np.sqrt(
                 np.square(a['x'].astype(np.float)) +
                 np.square(a['y'].astype(np.float))
@@ -154,9 +154,16 @@ def FilenameGenerator():
     return filename
 
 #-----------------------------------------------------------------------------------------------
+def CameraRecordingSettings():
+
+    camera.framerate = 10
+    camera.exposure_mode = 'auto'
+    camera.awb_mode = 'auto'
+    camera.iso = 0
+
+#-----------------------------------------------------------------------------------------------
 def CameraDaySettings():
 
-    camera.framerate = 30
     camera.exposure_mode = 'auto'
     camera.awb_mode = 'auto'
     camera.iso = 0
@@ -165,7 +172,7 @@ def CameraDaySettings():
 def CameraNightSettings():
 
     camera.framerate = Fraction(1, 6)
-    camera.shutter_speed = 20000000   # 2.5 seconds
+    camera.shutter_speed = 20000000   # 2 seconds
     camera.exposure_mode = 'off'
     camera.iso = 600
 
@@ -205,27 +212,25 @@ print "PiCam started. All logging will go into picam.log"
 
 with DetectMotion(camera) as output:
     try:
-	CameraDaySettings()
+	CameraRecordingSettings()
         camera.start_recording('/dev/null', format='h264', motion_output=output)
         
         while True:
             while not motionDetected:
                 UpdateAstral()
                 UpdateLED()
-                camera.wait_recording(0.5)
+                camera.wait_recording(1)
 
             motionDetected = False
-	    try: 
-		camera.wait_recording(0)
-	        camera.stop_recording()
-	    except Exception:
-                 LOG.info('Exception', exc_info=True)
+            camera.stop_recording()
     
             if astralIsDay:
                 TakeDayImage()
             else:
                 TakeNightImage()
 
+	    MotionLastStillCaptureTime = datetime.datetime.now()
+	    CameraRecordingSettings()
 	    camera.start_recording('/dev/null', format='h264', motion_output=output)
     except Exception:
         LOG.info('Exception', exc_info=True)
